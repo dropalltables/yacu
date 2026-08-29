@@ -18,9 +18,6 @@ export function ScanBoot({
     <box
       width="100%"
       flexGrow={1}
-      border
-      borderStyle="rounded"
-      borderColor={theme.text}
       justifyContent="center"
       alignItems="center"
     >

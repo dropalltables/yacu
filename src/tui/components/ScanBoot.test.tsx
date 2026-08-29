@@ -24,5 +24,7 @@ describe("ScanBoot", () => {
     expect(frame).toContain("[##########          ]")
     expect(frame).not.toContain("Scanning Codex")
     expect(frame).not.toContain("files")
+    expect(frame).not.toContain("╭")
+    expect(frame).not.toContain("│")
   })
 })
