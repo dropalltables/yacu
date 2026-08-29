@@ -33,12 +33,14 @@ describe("ScanBoot", () => {
     expect(frame).toContain("Reading local usage...")
     expect(frame).toContain("Scanning Codex... 241 files, 23812 records, 159 sessions")
     expect(frame).toContain("Progress: [ 50%]")
+    expect(frame).toContain("[##############################")
     const colored = setup.captureSpans().lines.flatMap((line) => line.spans)
       .some((span) => span.bg.equals(terminalTheme("dark").progress))
     expect(colored).toBeTrue()
   })
 
   test("formats failures as stream entries", () => {
+    expect(scanLine({ ...progress, status: "scanning" })).toBe("Scanning Codex...")
     expect(scanLine({ ...progress, status: "error", error: "unreadable" }))
       .toBe("Scanning Codex... failed: unreadable")
   })

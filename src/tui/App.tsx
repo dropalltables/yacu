@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react"
 import { buildDashboard } from "../domain/aggregate"
-import { SOURCE_ORDER, type BreakdownMode, type Metric, type RangeDays, type SourceId, type UsageDataset } from "../domain/types"
+import { SOURCE_META, SOURCE_ORDER, type BreakdownMode, type Metric, type RangeDays, type SourceId, type UsageDataset } from "../domain/types"
 import { loadUsageDataset } from "../data/load"
 import type { ScanProgress } from "../data/types"
 import { Header } from "./components/Header"
@@ -15,6 +15,14 @@ import { ThemeProvider } from "./ThemeContext"
 import { useTerminalTheme } from "./theme"
 
 const RANGES: RangeDays[] = [1, 7, 30, 90]
+const COMPLETED_LOG_HOLD_MS = 800
+const INITIAL_SCAN_LOG: ScanProgress[] = SOURCE_ORDER.map((source) => ({
+  source,
+  label: SOURCE_META[source].label,
+  status: "pending",
+  completed: 0,
+  total: SOURCE_ORDER.length,
+}))
 
 export function App() {
   const renderer = useRenderer()
@@ -28,18 +36,19 @@ export function App() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [scanLog, setScanLog] = useState<ScanProgress[]>([])
+  const [scanLog, setScanLog] = useState<ScanProgress[]>(() => INITIAL_SCAN_LOG)
 
   const refresh = async () => {
+    const initialScan = dataset == null
     setLoading(true)
     setError(null)
-    if (dataset == null) setScanLog([])
+    if (initialScan) setScanLog(INITIAL_SCAN_LOG)
     try {
-      setDataset(await loadUsageDataset((progress) => {
-        if (progress.status !== "scanning") {
-          setScanLog((current) => [...current, progress])
-        }
-      }))
+      const nextDataset = await loadUsageDataset((progress) => {
+        if (initialScan) setScanLog((current) => upsertScanProgress(current, progress))
+      })
+      if (initialScan) await Bun.sleep(COMPLETED_LOG_HOLD_MS)
+      setDataset(nextDataset)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
@@ -91,23 +100,25 @@ export function App() {
   return (
     <ThemeProvider theme={theme}>
     <box width="100%" height="100%" flexDirection="column" backgroundColor={theme.bg}>
-      <scrollbox
-        flexGrow={1}
-        width="100%"
-        paddingX={2}
-        paddingTop={1}
-        scrollY={dashboard != null}
-        viewportCulling
-        scrollbarOptions={{
-          trackOptions: { backgroundColor: theme.bg, foregroundColor: theme.muted },
-          arrowOptions: { backgroundColor: theme.bg, foregroundColor: theme.muted },
-        }}
-      >
-        {dashboard == null ? (
-          error == null
+      {dashboard == null ? (
+        <box flexGrow={1} width="100%" height="100%" paddingX={2} paddingTop={1}>
+          {error == null
             ? <ScanBoot log={scanLog} width={contentWidth} />
-            : <text fg={theme.error}>{`Error: ${error}`}</text>
-        ) : (
+            : <text fg={theme.error}>{`Error: ${error}`}</text>}
+        </box>
+      ) : (
+        <scrollbox
+          flexGrow={1}
+          width="100%"
+          paddingX={2}
+          paddingTop={1}
+          scrollY
+          viewportCulling
+          scrollbarOptions={{
+            trackOptions: { backgroundColor: theme.bg, foregroundColor: theme.muted },
+            arrowOptions: { backgroundColor: theme.bg, foregroundColor: theme.muted },
+          }}
+        >
           <box flexDirection="column" width="100%" gap={2}>
             <Header
               metric={metric}
@@ -158,10 +169,16 @@ export function App() {
             {dataset?.errors.length ? <text fg={theme.error}>{dataset.errors.join(" · ")}</text> : null}
             <box height={1} />
           </box>
-        )}
-      </scrollbox>
+        </scrollbox>
+      )}
       {dashboard == null ? null : <Footer loading={loading} />}
     </box>
     </ThemeProvider>
   )
+}
+
+function upsertScanProgress(current: ScanProgress[], progress: ScanProgress): ScanProgress[] {
+  const index = current.findIndex((row) => row.source === progress.source)
+  if (index === -1) return [...current, progress]
+  return current.map((row, rowIndex) => rowIndex === index ? progress : row)
 }
