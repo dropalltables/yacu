@@ -5,13 +5,13 @@ Local coding-agent usage in an OpenTUI dashboard.
 ## Run
 
 ```sh
-bunx yacu
+bunx @dropalltables/yacu
 ```
 
 Or install it:
 
 ```sh
-bun add --global yacu
+bun add --global @dropalltables/yacu
 yacu
 ```
 
