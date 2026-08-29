@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react"
 import { buildDashboard } from "../domain/aggregate"
-import { SOURCE_META, SOURCE_ORDER, type BreakdownMode, type Metric, type RangeDays, type SourceId, type UsageDataset } from "../domain/types"
+import { SOURCE_ORDER, type BreakdownMode, type Metric, type RangeDays, type SourceId, type UsageDataset } from "../domain/types"
 import { loadUsageDataset } from "../data/load"
-import type { ScanProgress } from "../data/types"
 import { Header } from "./components/Header"
 import { Summary } from "./components/Summary"
 import { Chart } from "./components/Chart"
@@ -15,14 +14,7 @@ import { ThemeProvider } from "./ThemeContext"
 import { useTerminalTheme } from "./theme"
 
 const RANGES: RangeDays[] = [1, 7, 30, 90]
-const COMPLETED_LOG_HOLD_MS = 800
-const INITIAL_SCAN_LOG: ScanProgress[] = SOURCE_ORDER.map((source) => ({
-  source,
-  label: SOURCE_META[source].label,
-  status: "pending",
-  completed: 0,
-  total: SOURCE_ORDER.length,
-}))
+const COMPLETED_SCAN_HOLD_MS = 800
 
 export function App() {
   const renderer = useRenderer()
@@ -36,18 +28,18 @@ export function App() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [scanLog, setScanLog] = useState<ScanProgress[]>(() => INITIAL_SCAN_LOG)
+  const [scanCompleted, setScanCompleted] = useState(0)
 
   const refresh = async () => {
     const initialScan = dataset == null
     setLoading(true)
     setError(null)
-    if (initialScan) setScanLog(INITIAL_SCAN_LOG)
+    if (initialScan) setScanCompleted(0)
     try {
       const nextDataset = await loadUsageDataset((progress) => {
-        if (initialScan) setScanLog((current) => upsertScanProgress(current, progress))
+        if (initialScan) setScanCompleted(progress.completed)
       })
-      if (initialScan) await Bun.sleep(COMPLETED_LOG_HOLD_MS)
+      if (initialScan) await Bun.sleep(COMPLETED_SCAN_HOLD_MS)
       setDataset(nextDataset)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -103,7 +95,7 @@ export function App() {
       {dashboard == null ? (
         <box flexGrow={1} width="100%" height="100%" paddingX={2} paddingTop={1}>
           {error == null
-            ? <ScanBoot log={scanLog} width={contentWidth} />
+            ? <ScanBoot completed={scanCompleted} total={SOURCE_ORDER.length} width={contentWidth} />
             : <text fg={theme.error}>{`Error: ${error}`}</text>}
         </box>
       ) : (
@@ -175,10 +167,4 @@ export function App() {
     </box>
     </ThemeProvider>
   )
-}
-
-function upsertScanProgress(current: ScanProgress[], progress: ScanProgress): ScanProgress[] {
-  const index = current.findIndex((row) => row.source === progress.source)
-  if (index === -1) return [...current, progress]
-  return current.map((row, rowIndex) => rowIndex === index ? progress : row)
 }
