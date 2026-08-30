@@ -2,11 +2,11 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { localDate } from "../../domain/dates"
 import type { UsageRecord, UsageSession } from "../../domain/types"
-import { estimateCacheSavings, estimateCost } from "../pricing"
+import type { PricingCatalog } from "../pricing"
 import { asObject, globFiles, numberValue, stringValue } from "../jsonl"
 import type { SourceLoadResult } from "../types"
 
-export async function loadOpenCodeUsage(): Promise<SourceLoadResult> {
+export async function loadOpenCodeUsage(pricing: PricingCatalog): Promise<SourceLoadResult> {
   const root = process.env.OPENCODE_DATA_DIR ?? join(homedir(), ".local", "share", "opencode")
   const files = await globFiles(join(root, "storage", "message"), "**/*.json")
   const seen = new Set<string>()
@@ -18,6 +18,7 @@ export async function loadOpenCodeUsage(): Promise<SourceLoadResult> {
       const message = asObject(await Bun.file(path).json())
       const id = stringValue(message?.id)
       const model = stringValue(message?.modelID)
+      const provider = stringValue(message?.providerID) ?? "opencode"
       const tokensValue = asObject(message?.tokens)
       if (id == null || model == null || tokensValue == null || seen.has(id)) continue
       seen.add(id)
@@ -33,15 +34,14 @@ export async function loadOpenCodeUsage(): Promise<SourceLoadResult> {
       const date = localDate(numberValue(time?.created) || Date.now())
       const rawSession = stringValue(message?.sessionID) ?? id
       const sessionId = `opencode:${rawSession}`
-      const localCost = typeof message?.cost === "number" ? message.cost : null
       records.push({
         date,
         source: "opencode",
         model,
         sessionId,
         ...tokens,
-        costUsd: localCost ?? estimateCost(model, tokens),
-        cacheSavingsUsd: estimateCacheSavings(model, tokens.cacheReadTokens),
+        costUsd: pricing.estimateCost(provider, model, tokens),
+        cacheSavingsUsd: pricing.estimateCacheSavings(provider, model, tokens),
       })
       sessions.set(sessionId, { id: sessionId, source: "opencode", date })
     } catch {

@@ -2,7 +2,7 @@ import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { localDate } from "../../domain/dates"
 import type { UsageRecord, UsageSession } from "../../domain/types"
-import { estimateCacheSavings, estimateCost } from "../pricing"
+import type { PricingCatalog } from "../pricing"
 import { asObject, forEachJsonLine, globFiles, numberValue, stringValue } from "../jsonl"
 import type { SourceLoadResult } from "../types"
 
@@ -18,7 +18,7 @@ type ClaudeEntry = {
   cacheReadTokens: number
 }
 
-export async function loadClaudeUsage(): Promise<SourceLoadResult> {
+export async function loadClaudeUsage(pricing: PricingCatalog): Promise<SourceLoadResult> {
   const files = [...new Set((await Promise.all(
     claudeRoots().map((root) => globFiles(
       join(root, "projects"),
@@ -57,8 +57,8 @@ export async function loadClaudeUsage(): Promise<SourceLoadResult> {
         model: entry.model,
         sessionId,
         ...tokens,
-        costUsd: estimateCost(entry.model, tokens),
-        cacheSavingsUsd: estimateCacheSavings(entry.model, entry.cacheReadTokens),
+        costUsd: pricing.estimateCost("anthropic", entry.model, tokens),
+        cacheSavingsUsd: pricing.estimateCacheSavings("anthropic", entry.model, tokens),
       })
 
       if (sessionId != null) {

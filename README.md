@@ -15,7 +15,7 @@ bun add --global @dropalltables/yacu
 yacu
 ```
 
-`yacu` reads local Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and Grok session stores. It does not require accounts, API keys, or network access. Cursor token totals are estimated from local agent transcripts; the other sources use locally recorded usage fields.
+`yacu` reads local Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and Grok session stores. It fetches current model pricing from [models.dev](https://models.dev) and does not require an account or API key. Cursor token totals are estimated from local agent transcripts; the other sources use locally recorded usage fields.
 
 ## Keys
 

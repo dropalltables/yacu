@@ -2,11 +2,11 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { localDate } from "../../domain/dates"
 import type { UsageRecord, UsageSession } from "../../domain/types"
-import { estimateCacheSavings, estimateCost } from "../pricing"
+import type { PricingCatalog } from "../pricing"
 import { asObject, forEachJsonLine, globFiles, numberValue, stringValue } from "../jsonl"
 import type { SourceLoadResult } from "../types"
 
-export async function loadCodexUsage(): Promise<SourceLoadResult> {
+export async function loadCodexUsage(pricing: PricingCatalog): Promise<SourceLoadResult> {
   const root = join(process.env.CODEX_HOME ?? join(homedir(), ".codex"), "sessions")
   const files = await globFiles(root, "**/*.jsonl")
   const records: UsageRecord[] = []
@@ -15,6 +15,7 @@ export async function loadCodexUsage(): Promise<SourceLoadResult> {
   for (const path of files) {
     let sessionId = path
     let model = "codex"
+    let provider = "openai"
     let skipSession = false
     let previousTotal = ""
 
@@ -25,9 +26,10 @@ export async function loadCodexUsage(): Promise<SourceLoadResult> {
 
       if (type === "session_meta") {
         sessionId = stringValue(payload?.id) ?? sessionId
+        provider = stringValue(payload?.model_provider) ?? provider
         const timestamp = stringValue(payload?.timestamp) ?? stringValue(value?.timestamp)
-        const threadSource = payload?.thread_source
-        skipSession = typeof threadSource !== "string" && JSON.stringify(threadSource).toLowerCase().includes("sub")
+        const sessionSource = JSON.stringify([payload?.thread_source, payload?.source]).toLowerCase()
+        skipSession = sessionSource.includes("subagent")
         previousTotal = ""
         if (timestamp != null && !skipSession) {
           sessions.set(sessionId, { id: `codex:${sessionId}`, source: "codex", date: localDate(timestamp) })
@@ -63,8 +65,8 @@ export async function loadCodexUsage(): Promise<SourceLoadResult> {
         model,
         sessionId: `codex:${sessionId}`,
         ...tokens,
-        costUsd: estimateCost(model, tokens),
-        cacheSavingsUsd: estimateCacheSavings(model, cached),
+        costUsd: pricing.estimateCost(provider, model, tokens),
+        cacheSavingsUsd: pricing.estimateCacheSavings(provider, model, tokens),
       })
     })
   }

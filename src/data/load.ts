@@ -5,11 +5,12 @@ import { loadCursorUsage } from "./sources/cursor"
 import { loadGeminiUsage } from "./sources/gemini"
 import { loadGrokUsage } from "./sources/grok"
 import { loadOpenCodeUsage } from "./sources/opencode"
+import { loadPricingCatalog, type PricingCatalog } from "./pricing"
 import type { ScanProgressHandler, SourceLoadResult } from "./types"
 
 type SourceLoader = {
   id: SourceId
-  load: () => Promise<SourceLoadResult>
+  load: (pricing: PricingCatalog) => Promise<SourceLoadResult>
 }
 
 const SOURCES: SourceLoader[] = [
@@ -22,12 +23,13 @@ const SOURCES: SourceLoader[] = [
 ]
 
 export async function loadUsageDataset(onProgress?: ScanProgressHandler): Promise<UsageDataset> {
+  const pricing = await loadPricingCatalog()
   let completed = 0
   const results = await Promise.all(SOURCES.map(async (source) => {
     const common = { source: source.id, label: SOURCE_META[source.id].label, total: SOURCES.length }
     onProgress?.({ ...common, status: "scanning", completed })
     try {
-      const value = await source.load()
+      const value = await source.load(pricing)
       completed += 1
       onProgress?.({
         ...common,

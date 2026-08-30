@@ -2,7 +2,7 @@ import { homedir } from "node:os"
 import { basename, join } from "node:path"
 import { localDate } from "../../domain/dates"
 import type { UsageRecord, UsageSession } from "../../domain/types"
-import { estimateCacheSavings, estimateCost } from "../pricing"
+import type { PricingCatalog } from "../pricing"
 import { asObject, globFiles, numberValue, stringValue } from "../jsonl"
 import type { SourceLoadResult } from "../types"
 
@@ -12,7 +12,7 @@ type ParsedConversation = {
   messages: Array<Record<string, unknown>>
 }
 
-export async function loadGeminiUsage(): Promise<SourceLoadResult> {
+export async function loadGeminiUsage(pricing: PricingCatalog): Promise<SourceLoadResult> {
   const root = process.env.GEMINI_HOME ?? join(homedir(), ".gemini")
   const files = [
     ...await globFiles(join(root, "tmp"), "**/chats/*.json"),
@@ -56,8 +56,8 @@ export async function loadGeminiUsage(): Promise<SourceLoadResult> {
         model,
         sessionId,
         ...tokens,
-        costUsd: estimateCost(model, tokens),
-        cacheSavingsUsd: estimateCacheSavings(model, cached),
+        costUsd: pricing.estimateCost("google", model, tokens),
+        cacheSavingsUsd: pricing.estimateCacheSavings("google", model, tokens),
       })
       sessions.set(sessionId, { id: sessionId, source: "gemini", date })
     }

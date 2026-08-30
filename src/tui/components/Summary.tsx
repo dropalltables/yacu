@@ -25,7 +25,7 @@ export function Summary({
   return (
     <box flexDirection="column" width="100%" gap={1}>
       <text fg={theme.text}><strong>{total}</strong></text>
-      <text fg={theme.muted}>{`${dashboard.sessions.toLocaleString("en-US")} sessions · API estimate`}</text>
+      <text fg={theme.muted}>{`${dashboard.sessions.toLocaleString("en-US")} sessions · models.dev estimate`}</text>
       <box height={1} />
       {dashboard.providers.map((provider) => {
         const meta = SOURCE_META[provider.source]

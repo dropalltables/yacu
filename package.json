@@ -1,6 +1,6 @@
 {
   "name": "@dropalltables/yacu",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Local coding-agent usage dashboard for the terminal",
   "repository": {
     "type": "git",
@@ -51,8 +51,7 @@
     "@opentui/core": "^0.5.9",
     "@opentui/react": "^0.5.9",
     "gpt-tokenizer": "4.0.0",
-    "react": "^19.2.8",
-    "tokentally": "^0.1.4"
+    "react": "^19.2.8"
   },
   "devDependencies": {
     "@types/bun": "^1.4.0",

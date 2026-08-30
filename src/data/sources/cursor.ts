@@ -4,7 +4,7 @@ import { basename, dirname, join } from "node:path"
 import { countTokens } from "gpt-tokenizer/encoding/o200k_base"
 import { localDate } from "../../domain/dates"
 import type { UsageRecord, UsageSession } from "../../domain/types"
-import { estimateCost } from "../pricing"
+import type { PricingCatalog } from "../pricing"
 import { asObject, forEachJsonLine, globFiles, stringValue } from "../jsonl"
 import type { SourceLoadResult } from "../types"
 
@@ -13,7 +13,7 @@ type TranscriptCount = {
   outputTokens: number
 }
 
-export async function loadCursorUsage(): Promise<SourceLoadResult> {
+export async function loadCursorUsage(pricing: PricingCatalog): Promise<SourceLoadResult> {
   const root = process.env.CURSOR_CONFIG_DIR ?? join(homedir(), ".cursor")
   const files = await globFiles(join(root, "projects"), "**/agent-transcripts/**/*.jsonl")
   const fallbackModel = await readConfiguredModel(join(root, "cli-config.json"))
@@ -45,7 +45,7 @@ export async function loadCursorUsage(): Promise<SourceLoadResult> {
       model,
       sessionId,
       ...tokens,
-      costUsd: estimateCost(model, tokens),
+      costUsd: pricing.estimateCost("cursor", model, tokens),
       cacheSavingsUsd: 0,
     })
     sessions.push({ id: sessionId, source: "cursor", date })
