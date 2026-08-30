@@ -1,5 +1,5 @@
 {
-  "name": "yacu",
+  "name": "@dropalltables/yacu",
   "version": "0.1.0",
   "description": "Local coding-agent usage dashboard for the terminal",
   "repository": {
